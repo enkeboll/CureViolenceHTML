@@ -1,6 +1,0 @@
-\contentsline {section}{\numberline {1}Introduction}{1}{section.1}
-\contentsline {section}{\numberline {2}Approach}{2}{section.2}
-\contentsline {section}{\numberline {3}Consolidated}{2}{section.3}
-\contentsline {section}{\numberline {4}Operational Recommendations for Cure Violence}{2}{section.4}
-\contentsline {section}{\numberline {5}Data Strategy recommendations for Cure Violence going forward}{2}{section.5}
-\contentsline {section}{\numberline {6}Lessons learned and follow on work suggestions}{2}{section.6}
