@@ -1,0 +1,957 @@
+<!DOCTYPE html>
+<html lang='en'>
+<head>
+  <title>Cure Violence - Baltimore Heatmap</title>
+  <script type='text/javascript' src='http://maps.google.com/maps/api/js?key=AIzaSyA5dv_GtqtKCJ0LLVj820Zcx0fF2GfrE-I'></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/2.2.2/jquery.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery-csv/0.71/jquery.csv-0.71.min.js"></script>
+
+  <link href='http://fonts.googleapis.com/css?family=Open+Sans:700,300' rel='stylesheet' type='text/css'>
+
+  <style>
+    * {
+      padding:0;
+      margin:0;
+
+      font-family: 'Open Sans', sans-serif;
+      font-weight:300;
+
+      //disable selection
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      -khtml-user-select: none;
+      -moz-user-select: none;
+      -ms-user-select: none;
+      user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      color:black;
+      background: #95DB8F;
+    }
+
+    #header {
+      z-index:99;
+      margin: 20px;
+      position: fixed;
+    }
+
+    h1 {
+      font-size:45px;
+      font-weight:700;
+
+      line-height: 160%;
+      margin:0 25px 0 10px;
+
+      display:block;
+      float:left;
+    }
+
+    h1 span {
+      font-size: 53px;
+      font-weight:300;
+    }
+
+
+    #animation-control-button {
+      float:left;
+    }
+
+    #animation-control-button .play {
+      border: solid transparent;
+      margin-left: 5px;
+      border-width: 25px 0px 25px 39px;
+      border-left-color: black;
+      height:0;
+      width:0;
+    }
+
+    #animation-control-button .pause {
+      width: 20px;
+      height: 50px;
+      border-left: 12px solid black;
+      border-right: 12px solid black;
+    }
+
+    #heatmapArea {
+      height: 100%;
+      width: 100%;
+    }
+
+    #progress-bar-background {
+      position:fixed;
+      width:100%;
+      height:3px;
+      left:0;
+      bottom:0;
+      background:white;
+      z-index:98;
+    }
+
+    #progress-bar-container {
+      position:fixed;
+      overflow:visible;
+      left:0;
+      bottom:0;
+      z-index:99;
+    }
+
+    #progress-bar-pointer {
+      position: absolute;
+      right:-160px;
+      bottom:0;
+      right:0;
+
+      background:#87D69B;
+      margin-right: -45px;
+      margin-bottom:20px;
+      padding-top:17px;
+      text-align:center;
+      height:80px;
+      width:90px;
+      line-height:150%;
+
+      cursor: pointer;
+    }
+
+    #progress-bar-pointer:after {
+      position: absolute;
+      content: ' ';
+      top: 100%;
+      left: 50%;
+      border: solid transparent;
+      border-top-color: #87D69B;
+      border-width: 15px;
+      margin-left: -15px;
+    }
+
+    #progress-bar-pointer .date-prefix {
+      font-size:10px;
+    }
+
+    #progress-bar-pointer .year {
+      font-size:13px;
+    }
+
+    #progress-bar {
+      position:absolute;
+      background:#327CCB;
+      width:100%;
+      left:0;
+      bottom:0;
+      height:3px;
+    }
+
+    #progress-bar-instructions {
+      position: absolute;
+      right:-160px;
+      bottom: 80px;
+      padding:10px 10px;
+      width:80px;
+      text-align: center;
+      background:white;
+      display:none;
+    }
+
+    #progress-bar-instructions:after {
+      position:absolute;
+      content:' ';
+      top:50px;
+      left:0px;
+      border:solid transparent;
+      border-right:none;
+      border-bottom-color:#FFF;
+      border-width:15px;
+      margin-left:-15px;
+    }
+
+    .button {
+      text-decoration:none;
+      color:black;
+      padding:10px;
+      display:block;
+      background:#87D69B;
+      -moz-box-shadow:-5px 5px #222;
+      -webkit-box-shadow:-5px 5px #222;
+      box-shadow:-5px 5px #222;
+    }
+
+    .button:hover {
+      background:#AAEBBB;
+    }
+
+    .button:active {
+      margin: 3px -3px;
+      box-shadow:-2px 2px #222;
+    }
+
+    a.button {
+      display:inline-block;
+      font-size:20px;
+      padding:15px;
+    }
+
+    .button.button-right {
+      float:right;
+      display:block;
+      text-decoration:none;
+      color:black;
+      padding:15px;
+      display:block;
+      background:white;
+      font-size: 16px;
+      -moz-box-shadow:5px 5px #222;
+      -webkit-box-shadow:5px 5px #222;
+      box-shadow: 5px 5px #222;
+      margin-right:5px;
+    }
+
+    .button.button-right:hover {
+      background:#DFD;
+    }
+
+    .button.button-right:active {
+      box-shadow:2px 2px #222;
+      margin: 3px 2px -3px 3px;
+    }
+
+    #options-button {margin-right:0;}
+    #options-button:active {margin: 3px -3px -3px 3px;}
+    #options, {position:fixed;top:60px;right:0;z-index:97;text-align:right;}
+
+    #options-area {
+      position:fixed;
+      top:0;
+      right:0;
+      z-index: 101;
+    }
+
+    #options-area li {
+      float:right;
+      clear:both;
+      list-style:none;
+      width:150px;
+      padding:8px 13px;
+      margin-right:-200px;
+      transition:margin-right .25s ease-in-out;
+      -moz-transition:margin-right .25s ease-in-out;
+      -webkit-transition:margin-right .25s ease-in-out;
+      font-size:14px;
+      background:#BFEADD;
+    }
+    #options-area li.title {
+      margin-top: 10px;
+      font-size: 16px;
+      background:white;
+    }
+
+    #options li:nth-child(2){background:#A1CDFB;}
+    #options li:nth-child(3){background:#BFEADD;}
+    #options li:nth-child(4){background:#C4B0DD;}
+    #options li:nth-child(5){background:#FAE07E;}
+    #options li:nth-child(6){background:#E5F9A6;}
+
+    input {
+      margin:10px;
+    }
+
+    .message-box {
+      background:#FFF;
+      position:fixed;
+
+      z-index:100;
+      width:700px;
+      top:50%;
+      left:50%;
+      margin-top:-250px;
+      margin-left:-350px;
+      line-height:160%;
+      text-align:center;
+      display:none;
+    }
+
+    .message-box h2 {
+      text-align:left;
+      margin:40px;
+    }
+
+    .message-box p{margin:20px 40px 30px 40px;text-align:left;}
+    .message-box .footer {
+      margin:40px 40px 0 40px;
+      text-align:center;
+      text-weight:800;
+    }
+
+    .message-box .footer a {
+      text-decoration:none;
+      font-weight:800;
+      color:#333;
+    }
+
+    .message-box .footer a:hover{color:#95DB8F;}
+
+    a.button {
+      display:inline-block;
+      font-size:20px;
+      padding:15px;
+    }
+
+    #numbers, #colors {
+      position:absolute;
+      top:0;
+      left:0;
+      display:table;
+      height:100%;
+      width:100%;
+      z-index:97;
+    }
+    #numbers {z-index:98;}
+
+    #numbers div, #colors div {
+      display:table-row;
+    }
+
+    #numbers div a, #colors div span {
+      width:100%;
+      display:table-cell;
+      text-align: center;
+      vertical-align: middle;
+      cursor:default;
+    }
+    #colors div:nth-child(1) span {background:#FCB7A7;}
+    #colors div:nth-child(2) span {background:#F8F087;}
+    #colors div:nth-child(3) span {background:#B7E3C0;}
+    #colors div:nth-child(4) span {background:#B8D0DD;}
+
+    @media (max-width: 1000px) {
+      h1 {
+        font-size:30px;
+      }
+
+      h1 span {
+        font-size: 45px;
+      }
+
+      * {
+        font-size: 14px;
+      }
+
+      .message-box {
+        width:100%;
+        height:100%;
+        position:absolute;
+        padding:0;
+        top:0;
+        left:0;
+        margin:0;
+        overflow: auto;
+      }
+
+      .message-box h2 {
+        font-size: 18px;
+      }
+
+      #legend {
+        height:180px;
+        width:50px;
+        top:90px;
+        margin-left:25px;
+      }
+    }
+
+    @media (max-width: 1000px) {
+      h1 {
+        font-size:20px;
+      }
+
+      h1 span {
+        font-size: 35px;
+      }
+    }
+
+  </style>
+  </head>
+<body>
+
+<div id=header>
+  <h1>Baltimore<span>Gun Violence</span></h1>
+  <div id='animation-control-button' class=button>
+    <div class='pause'></div>
+  </div>
+</div>
+
+<div id=options-area>
+  <a href='#' id='options-button' class='button button-right'>options</a>
+
+  <ul id=options>
+    <li class=title>Filters
+    <li><label for='filter-homicide'>Homicide</label><input id='filter-homicide' type='checkbox' name='1' checked>
+    <li><label for='filter-robbery'>Robbery</label><input id='filter-robbery' type='checkbox' name='3' checked>
+    <li><label for='filter-agg-assault'>Aggravated Assault</label><input id='filter-agg-assault'type='checkbox' name='4' checked>
+    <li><label for='filter-shooting'>Shooting</label><input id='filter-shooting' type='checkbox' name='9' checked>
+
+    <li class=title>Crime Markers
+    <li><label for='options-markers'>Show on Pause</label><input id='options-markers' type='checkbox' name='crime-markers' unchecked>
+  </ul>
+</div>
+
+<div id='heatmapArea'></div>
+
+<!-- <div id=legend>
+  <div id=numbers>
+    <div><a title='Four Crimes'>4</a></div>
+    <div><a title='Three Crimes'>3</a></div>
+    <div><a title='Two Crimes'>2</a></div>
+    <div><a title='One Crime'>1</a></div>
+  </div>
+  <div id=colors>
+    <div><span><span></div>
+    <div><span><span></div>
+    <div><span><span></div>
+    <div><span><span></div>
+  </div>
+</div> -->
+
+<div id='progress-bar-background'> </div>
+<div id='progress-bar-container'>
+  <div id='progress-bar-pointer-container'>
+    <div id='progress-bar-pointer' onclick='void(0)'></div>
+  </div>
+  <div id='progress-bar'> </div>
+</div>
+
+<script type='text/javascript' src='heatmap.js'></script>
+<script type='text/javascript' src='gmaps-heatmap.js'></script>
+<script type='text/javascript'>
+
+  //http://heatmapdemo.alastair.is/js/map/heatmaplayer.js
+  //http://eightmedia.github.io/hammer.js/
+  var DAY_IN_MILLI = 1000 * 60 * 60 * 24;
+
+  var userAgent = navigator.userAgent.toLowerCase();
+
+  var isMobile = typeof window.orientation !== 'undefined' && !userAgent.match(/iPad/i);
+  var isBrowserFast = /webkit/.test(userAgent);
+
+  if(userAgent.indexOf('msie') >= 0 ? parseInt(navigator.userAgent.toLowerCase().split('msie')[1]) < 9 : false)
+    alert('This browser is too old to run this app.\nPlease try with a different browser.');
+
+
+ /*
+   * emits events after each animation frame and after animation is complete
+  */
+  var CrimeAnimator = function(data, heatmap, map) {
+
+    this.map = map;
+    this.data = data;
+    this.heatmap = heatmap;
+    this.dataLength = data.length - 1;
+
+    //create marker array to track displayed markers and the info window that displays when they are clicked
+    this.markers = [];
+    this.showMarkers = false;
+    this.markerInfoWindow = new google.maps.InfoWindow();
+
+    //figure out the date range
+    this.dateRange = {start: data[0].epoch, end: data[data.length-1].epoch};
+    this.dayRange = Math.ceil((this.dateRange.end - this.dateRange.start) / DAY_IN_MILLI);
+
+    this.isPaused = false;
+
+    //calculate the number of days that elapse for each animation frame
+    this.animationTimeMultiplier = 500000 * (this.dayRange / 365);
+
+    //calculate how long crimes should be displayed for based on our range
+    this.visibleLifespan = Math.ceil(this.dayRange / 10);
+    if(this.visibleLifespan < 10)
+      this.visibleLifespan = 10;
+    else if(this.visibleLifespan > 40)
+      this.visibleLifespan = 40;
+    this.visibleLifespan = this.visibleLifespan * DAY_IN_MILLI;
+
+    this.lowIndex = 0; //holds the data index of the oldest crime we are displaying
+    this.highIndex = 0; //holds the data index of the newest crime we are displaying
+
+    this.filters = [];
+
+    this.setupProgressBar();
+
+    var self = this;
+    var $animationControlButton = $('#animation-control-button');
+    $animationControlButton.click(this.togglePause.bind(this));
+
+    //handle the filter click events
+    $('#options input:not(#options-markers)').on('change', this.changeFilters.bind(this));
+    $('#options-markers').on('change', this.toggleCrimeMarkers.bind(this));
+
+    //hookup spacebar pauser/resume
+    $(window).keypress(this.togglePause.bind(this));
+
+    this.$animationControl = $animationControlButton.children('div');
+
+    //if the animation is paused then redraw the current frame on drag end
+    google.maps.event.addListener(map, 'dragend', function() {
+
+      if(self.isPaused)
+        self.drawFrame(self.currentDate);
+
+    });
+
+    google.maps.event.addListener(map, 'zoom_changed', function() {
+      var radiusMultiplier, zoom = map.getZoom();
+      if(zoom == 11)
+        radiusMultiplier = 1;
+      else if(zoom == 12)
+        radiusMultiplier = 2;
+      else if(zoom == 13)
+        radiusMultiplier = 2;
+      else if(zoom == 14)
+        radiusMultiplier = 2.5;
+
+      heatmap.heatmap.set('radius', zoom * radiusMultiplier);
+
+      if(self.isPaused)
+        self.drawFrame(self.currentDate);
+    });
+  };
+
+  CrimeAnimator.prototype.setupProgressBar = function setupProgressBar() {
+
+    //setup progress bar slider events
+    this.$progressBar = $('#progress-bar-container');
+    var $progressBarPointer = $('#progress-bar-pointer');
+    var $document = $(document);
+
+    this.progressBarStartPosition = Math.ceil($document.width() * 0.05);
+    this.progressBarEndPosition = $document.width() - this.progressBarStartPosition;
+
+    this.$progressBar.css('width', this.progressBarStartPosition + 'px');
+
+    this.totalTimeRange = this.dateRange.end - this.dateRange.start;
+
+    this.totalPixelRange = this.progressBarEndPosition - this.progressBarStartPosition;
+
+    var self = this;
+    var stopPointerDrag = function(e) {
+      self.updateCurrentDateToProgressPosition(e.pageX);
+
+      //draw the heatmap frame for our current position
+      self.lowIndex = 0;
+      self.highIndex = 0;
+      self.drawFrame(self.currentDate);
+
+      self.removeCrimeMarkers();
+      if(self.showMarkers)
+        self.addCrimeMarkers();
+
+      $document.off('mousemove ontouchmove');
+      e.preventDefault();
+    };
+
+    //keep track of the top of the progres bar so that we can stop dragging when the mouse leaves the top
+    var pointerOffsetTop = $progressBarPointer.offset().top;
+    $(window).resize(function() {
+      pointerOffsetTop = $progressBarPointer.offset().top;
+    });
+
+    //setup dragability of progress bar pointer
+    $progressBarPointer.on('mousedown ontouchstart', function(e) {
+      self.pause.apply(self);
+
+      $document.on('mousemove ontouchmove', function(e) {
+        if(e.pageY < pointerOffsetTop) {
+          stopPointerDrag(e);
+          return;
+        }
+
+        //impose start/end limits on progress bar
+        var x = e.pageX;
+        if(x > self.progressBarEndPosition)
+          x = self.progressBarEndPosition;
+        else if(x < self.progressBarStartPosition)
+          x = self.progressBarStartPosition;
+
+        self.$progressBar.css('width', x + 'px');
+
+        //update progress bar text
+        self.updateCurrentDateToProgressPosition(x);
+        self.updateProgressBarText();
+
+        self.removeCrimeMarkers();
+
+        //in chrome we will animate on drag
+        if(isBrowserFast)
+          self.drawFrame(self.currentDate);
+
+        e.preventDefault();
+      });
+
+      e.preventDefault();
+    });
+
+    //stop dragging
+    $progressBarPointer.on('mouseup ontouchend', stopPointerDrag);
+
+    this.$progressBarPointer = $progressBarPointer;
+  };
+
+  var monthNames = [ 'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December' ];
+  CrimeAnimator.prototype.updateProgressBar = function updateProgressBar() {
+    var x = (this.progressBarStartPosition + (((this.currentDate - this.dateRange.start) / this.totalTimeRange) * this.totalPixelRange));
+    if(x > this.progressBarEndPosition)
+      x = this.progressBarEndPosition;
+
+    this.$progressBar.css('width' , x + 'px');
+
+    this.updateProgressBarText();
+  };
+
+  CrimeAnimator.prototype.updateCurrentDateToProgressPosition = function updateCurrentDateToProgressPosition(progressPosition) {
+    //calc the current position of pointer and translate that into an animation position date
+    var progressBarPercentComplete = (progressPosition - this.progressBarStartPosition) / this.totalPixelRange;
+    this.currentDate = this.dateRange.start + ((this.dateRange.end - this.dateRange.start) * progressBarPercentComplete);
+  };
+
+  CrimeAnimator.prototype.updateProgressBarText = function updateProgressBarText() {
+    var now = new Date(this.currentDate);
+    this.$progressBarPointer.html(
+      monthNames[now.getMonth()] + '<br>' + now.getDate() +
+      '<span class=date-prefix>' + getNumberPostfix(now.getDate()) + '</span><br>' +
+      '<span class=year>- ' + now.getFullYear() + ' -</span><br>'
+    );
+  };
+
+  var numberEndings = ['', 'st', 'nd', 'rd', 'th'];
+  function getNumberPostfix(number) {
+    return numberEndings[number >= numberEndings.length ? numberEndings.length - 1 : number];
+  };
+
+  CrimeAnimator.prototype.applyFilters = function setData(filters) {
+    this.filters = filters;
+  };
+
+  CrimeAnimator.prototype.updateIndexPositions = function updateIndexPositions(visibleThreshold, nextDate) {
+    this.lowIndex = this.getNewIndexPosition(this.lowIndex, visibleThreshold, 0);
+
+    if(this.highIndex < this.lowIndex)
+      this.highIndex = this.lowIndex;
+
+    this.highIndex = this.getNewIndexPosition(this.highIndex, nextDate, this.lowIndex);
+  },
+
+  /**
+    adjust index position to match the comparitor date and the current data
+  */
+  CrimeAnimator.prototype.getNewIndexPosition = function getNewIndexPosition(index, comparitorDate, indexMinimum) {
+    //expand the index till it reaches the compairitor date
+    while(index < this.dataLength) {
+      if(this.data[index].epoch >= comparitorDate)
+        break;
+
+      index += 1;
+    }
+
+    //contract the index till it reaches the comparitor date
+    while(index > indexMinimum) {
+      if(this.data[index].epoch < comparitorDate)
+        break;
+
+      index -= 1;
+    }
+
+    return index;
+  };
+
+  CrimeAnimator.prototype.drawFrame = function drawFrame(nextDate) {
+      var visibleThreshold = this.currentDate - this.visibleLifespan;
+      this.updateIndexPositions(visibleThreshold, nextDate);
+
+      //if no removals to make then just add the crime points that are between the currentDate and the next Date and aren't filtered
+      var currentData = this.getCurrentHeatmapData(this.lowIndex, this.highIndex, visibleThreshold);
+      this.heatmap.setDataSet(currentData);
+  },
+
+  CrimeAnimator.prototype.animate = function animate() {
+
+    var now = new Date().getTime();
+
+    if(!this.isPaused) {
+      var nextDate = this.currentDate + ((now - this.lastDrawTime) * this.animationTimeMultiplier);
+
+      this.drawFrame(nextDate);
+
+      //increment currentDate to next date
+      this.currentDate = nextDate;
+
+      //update our current progress to match the current date
+      this.updateProgressBar();
+    }
+
+    this.lastDrawTime = now;
+
+    if (this.highIndex < this.dataLength)
+      window.requestAnimationFrame(this.animate.bind(this));
+    else {
+      //we are done
+      this.isAnimating = false;
+      this.pause();
+    }
+  };
+
+  CrimeAnimator.prototype.start = function start() {
+
+    //set the current date to the first day if we are at the end of the animation
+    if (this.highIndex >= this.dataLength || !this.currentDate)
+      this.currentDate = this.dateRange.start;
+
+    //reset our indexes
+    this.lowIndex = 0;
+    this.highIndex = 0;
+
+    this.lastDrawTime = new Date().getTime();
+
+    this.isAnimating = true;
+
+    //start the animation
+    this.animate();
+  }
+
+  CrimeAnimator.prototype.pause = function pause() {
+
+    this.$animationControl.removeClass('pause');
+    this.$animationControl.addClass('play');
+
+    this.isPaused = true;
+
+    //draw markers
+    if(this.showMarkers)
+      this.addCrimeMarkers();
+  };
+
+  CrimeAnimator.prototype.resume = function resume() {
+
+    this.removeCrimeMarkers();
+
+    this.$animationControl.removeClass('play');
+    this.$animationControl.addClass('pause');
+
+    this.isPaused = false;
+
+    //if we are at the end of the animation then restart it
+    if (!this.isAnimating)
+      this.start();
+  };
+
+  CrimeAnimator.prototype.togglePause = function togglePause() {
+    if(this.isPaused)
+      this.resume();
+    else
+      this.pause();
+  };
+
+  CrimeAnimator.prototype.changeFilters = function changeFilters(e) {
+    var checkbox = e.target;
+
+    var filterType = Number(checkbox.name);
+    if(!checkbox.checked) {
+      this.filters.push(filterType);
+    } else {
+      var index = this.filters.indexOf(filterType);
+      if (index > -1)
+        // drop the filter
+        this.filters.splice(index, 1);
+    }
+
+    if(this.isPaused || !this.isAnimating) {
+      this.drawFrame(this.currentDate);
+      this.removeCrimeMarkers();
+      if(this.showMarkers)
+        this.addCrimeMarkers();
+    }
+  };
+
+  CrimeAnimator.prototype.toggleCrimeMarkers = function toggleCrimeMarkers() {
+    this.showMarkers = !this.showMarkers;
+
+    if(!this.showMarkers)
+      this.removeCrimeMarkers();
+    else if(this.isPaused || !this.isAnimating)
+      this.addCrimeMarkers();
+  };
+
+  function buildPin(color) {
+    return new google.maps.MarkerImage("http://chart.apis.google.com/chart?chst=d_map_pin_letter&chld=%E2%80%A2|" + color,
+      new google.maps.Size(21, 34),
+      new google.maps.Point(0,0),
+      new google.maps.Point(10, 34));
+  }
+
+  var crimePins = {
+    1: {'type': 'Homicide', 'pin': buildPin('BFEADD')},
+    3: {'type': 'Robbery', 'pin': buildPin('A1CDFB')},
+    4: {'type': 'Agg. Assault', 'pin': buildPin('C4B0DD')},
+    9: {'type': 'Shooting', 'pin': buildPin('FAE07E')}
+  };
+  
+  CrimeAnimator.prototype.addCrimeMarkers = function addCrimeMarkers() {
+    var currentData = this.data.slice(this.lowIndex, this.highIndex + 1);
+    var self = this;
+
+    for(var i=currentData.length-1 ; i >= 0 ; i--) {
+      var crime = currentData[i];
+      var crimeType = crime.code[0];
+
+      if(this.filters.indexOf(crimeType) >= 0)
+        continue;
+
+      var marker = new google.maps.Marker({
+        position: new google.maps.LatLng(crime.lat, crime.long),
+        map: this.map,
+        icon: crimePins[crimeType]['pin'],
+        title: crimePins[crimeType]['type']
+      });
+
+      this.markers.push(marker);
+
+      //setup the markers onclick event to display the popup window
+      /*function setupMarkerInfoWindow(marker, crime) {
+        google.maps.event.addListener(marker, 'click', function() {
+          self.markerInfoWindow.content = 'type: ' + crime.description + '<br>date: ' + Date.parse(crime.ts);
+          self.markerInfoWindow.open(self.map, marker);
+        });
+      }(marker, crime);*/
+    }
+  };
+
+  CrimeAnimator.prototype.removeCrimeMarkers = function removeCrimeMarkers() {
+    for(var i=this.markers.length-1 ; i >= 0 ; i--) {
+      this.markers.pop().setMap(null);
+    }
+  };
+
+  CrimeAnimator.prototype.getCurrentHeatmapData = function getCurrentHeatmapData(lowIndex, highIndex, visibleThreshold) {
+    var currentData = this.data.slice(this.lowIndex, this.highIndex + 1);
+
+    var crime, type, count, timeFromHighIndex, heatmapData = [];
+    var currentTimeRange = this.currentDate - visibleThreshold;
+
+    for(var i = currentData.length-1 ; i >= 0 ; i--) {
+      crime = currentData[i];
+      type = crime.code[0]
+      if(this.filters.indexOf(type) >= 0)
+        continue;
+
+      timeFromHighIndex = this.currentDate - crime.epoch;
+      var x = timeFromHighIndex / currentTimeRange;
+      count = Math.abs(4 * (x - Math.pow(x, 2))); //exponential curve for fade in/out
+      heatmapData.push({lat : crime.lat, lng : crime.long, count: count});
+    }
+
+    return {max: 3, data: heatmapData};
+  };
+
+  !function($){
+    $(function(){
+
+      var myLatlng = new google.maps.LatLng(39.2904, -76.6122);
+
+      var myOptions = {
+        zoom: 13,
+        center: myLatlng,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        disableDefaultUI: true,
+        scrollwheel: true,
+        draggable: true,
+        navigationControl: true,
+        mapTypeControl: false,
+        scaleControl: true,
+        zoomControl: true,
+        zoomControlOptions: {
+          style: google.maps.ZoomControlStyle.DEFAULT,
+          position: google.maps.ControlPosition.RIGHT_CENTER
+        },
+        disableDoubleClickZoom: false,
+        styles: [{ "stylers": [
+          { "saturation": -26 },
+          { "lightness": 18 },
+          { "visibility": "on" }
+        ]}]
+      };
+
+      var map = new google.maps.Map($('#heatmapArea')[0], myOptions);
+
+      var heatmap = new HeatmapOverlay(map, {
+          'radius':30,
+          'visible':true,
+          'opacity':40
+      });
+
+      // Limit panning
+      var allowedBounds = new google.maps.LatLngBounds(
+           new google.maps.LatLng(39.2, -76.7122), 
+           new google.maps.LatLng(39.38, -76.5122)
+      );
+      var lastValidCenter = map.getCenter();
+
+      google.maps.event.addListener(map, 'center_changed', function() {
+          if (allowedBounds.contains(map.getCenter())) {
+              // still within valid bounds, so save the last valid position
+              lastValidCenter = map.getCenter();
+              return; 
+          }
+          // not valid anymore => return to last valid position
+          map.panTo(lastValidCenter);
+      });
+
+      // limit zoom levels
+     google.maps.event.addListener(map, 'zoom_changed', function() {
+       if (map.getZoom() < 11) map.setZoom(11);
+       if (map.getZoom() > 14) map.setZoom(14);
+     });
+
+      window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
+                              window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
+                              function(fn) {return setTimeout(fn, 1000 / 60);};
+
+      //handle the filter area drop down on click
+      $('#options-button').click(function() {
+        var $options = $('#options li');
+        fadeEachOption($options.toArray(), $options.css('margin-right') === '0px');
+      });
+
+      // this is important, because if you set the data set too early, the latlng/pixel projection doesn't work
+      google.maps.event.addListenerOnce(map, 'idle', function() {
+        // should be in the format lat, long, crime code, MS timestamp, day, description
+        $.get("data/bal_crime_firearm.csv",
+          function( rawData ) {
+            var items = $.csv.toObjects(rawData);
+            for (i=0;i<items.length;i++) {
+              items[i].epoch = (new Date(items[i].ts)).getTime()
+            }
+            var crimeAnimator = new CrimeAnimator(items, heatmap, map);
+            crimeAnimator.start()
+          },
+          dataType = 'text'
+        );
+      });
+
+    });
+  }(window.jQuery);
+
+  function fadeEachOption(options, isFadeIn) {
+    if(options.length <= 0)
+      return;
+
+    options.shift().style.marginRight = isFadeIn ? '-200px' : '0';
+
+    //adjust the wait time depending on if we are animating(which slows everything down)
+    window.setTimeout(fadeEachOption.bind(this, options, isFadeIn), this.isPaused || !this.isAnimating ? 30 : 0);
+  };
+
+
+</script>
+
+</body>
+</html>
+
