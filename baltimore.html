@@ -143,29 +143,6 @@
       height:3px;
     }
 
-    #progress-bar-instructions {
-      position: absolute;
-      right:-160px;
-      bottom: 80px;
-      padding:10px 10px;
-      width:80px;
-      text-align: center;
-      background:white;
-      display:none;
-    }
-
-    #progress-bar-instructions:after {
-      position:absolute;
-      content:' ';
-      top:50px;
-      left:0px;
-      border:solid transparent;
-      border-right:none;
-      border-bottom-color:#FFF;
-      border-width:15px;
-      margin-left:-15px;
-    }
-
     .button {
       text-decoration:none;
       color:black;
@@ -231,7 +208,7 @@
       float:right;
       clear:both;
       list-style:none;
-      width:150px;
+      width:160px;
       padding:8px 13px;
       margin-right:-200px;
       transition:margin-right .25s ease-in-out;
@@ -250,7 +227,6 @@
     #options li:nth-child(3){background:#BFEADD;}
     #options li:nth-child(4){background:#C4B0DD;}
     #options li:nth-child(5){background:#FAE07E;}
-    #options li:nth-child(6){background:#E5F9A6;}
 
     input {
       margin:10px;
@@ -375,10 +351,13 @@
 <body>
 
 <div id=header>
-  <h1>Baltimore<span>Gun Violence</span></h1>
+  <h1>Baltimore<span> Gun Violence</span></h1>
   <div id='animation-control-button' class=button>
     <div class='pause'></div>
   </div>
+  <div id=incidents><h1>Incidents:<span> 1</span></h1></div>
+  <div id=burden><h1>Burden:<span> $1</span></h1></div>
+
 </div>
 
 <div id=options-area>
@@ -393,25 +372,14 @@
 
     <li class=title>Crime Markers
     <li><label for='options-markers'>Show on Pause</label><input id='options-markers' type='checkbox' name='crime-markers' unchecked>
+
+    <li class=title>Other Cities
+    <li><label for='options-markers'><a href="newyork.html">New York, NY</a></label>
+    <li><label for='options-markers'><a href="chicago.html">Chicago, IL</a></label>
   </ul>
 </div>
 
 <div id='heatmapArea'></div>
-
-<!-- <div id=legend>
-  <div id=numbers>
-    <div><a title='Four Crimes'>4</a></div>
-    <div><a title='Three Crimes'>3</a></div>
-    <div><a title='Two Crimes'>2</a></div>
-    <div><a title='One Crime'>1</a></div>
-  </div>
-  <div id=colors>
-    <div><span><span></div>
-    <div><span><span></div>
-    <div><span><span></div>
-    <div><span><span></div>
-  </div>
-</div> -->
 
 <div id='progress-bar-background'> </div>
 <div id='progress-bar-container'>
@@ -492,22 +460,20 @@
 
     //if the animation is paused then redraw the current frame on drag end
     google.maps.event.addListener(map, 'dragend', function() {
-
       if(self.isPaused)
         self.drawFrame(self.currentDate);
-
     });
 
     google.maps.event.addListener(map, 'zoom_changed', function() {
       var radiusMultiplier, zoom = map.getZoom();
-      if(zoom == 11)
+      if(zoom <= 11)
         radiusMultiplier = 1;
       else if(zoom == 12)
         radiusMultiplier = 2;
       else if(zoom == 13)
-        radiusMultiplier = 2;
-      else if(zoom == 14)
-        radiusMultiplier = 2.5;
+        radiusMultiplier = 3;
+      else if(zoom >= 14)
+        radiusMultiplier = 4;
 
       heatmap.heatmap.set('radius', zoom * radiusMultiplier);
 
@@ -752,8 +718,7 @@
 
   CrimeAnimator.prototype.changeFilters = function changeFilters(e) {
     var checkbox = e.target;
-
-    var filterType = Number(checkbox.name);
+    var filterType = checkbox.name;
     if(!checkbox.checked) {
       this.filters.push(filterType);
     } else {
@@ -839,8 +804,10 @@
     for(var i = currentData.length-1 ; i >= 0 ; i--) {
       crime = currentData[i];
       type = crime.code[0]
-      if(this.filters.indexOf(type) >= 0)
+
+      if(this.filters.indexOf(type) >= 0) {
         continue;
+      }
 
       timeFromHighIndex = this.currentDate - crime.epoch;
       var x = timeFromHighIndex / currentTimeRange;
@@ -868,7 +835,7 @@
         scaleControl: true,
         zoomControl: true,
         zoomControlOptions: {
-          style: google.maps.ZoomControlStyle.DEFAULT,
+          style: google.maps.ZoomControlStyle.SMALL,
           position: google.maps.ControlPosition.RIGHT_CENTER
         },
         disableDoubleClickZoom: false,
@@ -879,12 +846,20 @@
         ]}]
       };
 
+      var kml_url = "https://data.baltimorecity.gov/api/geospatial/fy7v-tvcr?method=export&format=KML";
+
       var map = new google.maps.Map($('#heatmapArea')[0], myOptions);
 
+      var mapBoundaries = new google.maps.KmlLayer({
+        url: kml_url,
+        map: map,
+        preserveViewport: true,
+      });
+
       var heatmap = new HeatmapOverlay(map, {
-          'radius':30,
-          'visible':true,
-          'opacity':40
+          'radius': 32.5,
+          'visible': true,
+          'opacity': 40
       });
 
       // Limit panning
@@ -923,10 +898,14 @@
       // this is important, because if you set the data set too early, the latlng/pixel projection doesn't work
       google.maps.event.addListenerOnce(map, 'idle', function() {
         // should be in the format lat, long, crime code, MS timestamp, day, description
+        // script baltimore_cleanup.py cleans the data from
+        // https://data.baltimorecity.gov/Public-Safety/BPD-Part-1-Victim-Based-Crime-Data/wsfq-mvij
         $.get("data/bal_crime_firearm.csv",
           function( rawData ) {
             var items = $.csv.toObjects(rawData);
+            var max_lat, min_lat, max_long, min_long
             for (i=0;i<items.length;i++) {
+              // TODO set max and min lat/longs
               items[i].epoch = (new Date(items[i].ts)).getTime()
             }
             var crimeAnimator = new CrimeAnimator(items, heatmap, map);
