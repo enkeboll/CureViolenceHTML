@@ -10,6 +10,6 @@ The visualization is lightweight and requires no special software, other than a 
 The other major benefit of this tool is that it is highly extensible, as is covered in the next section. Cure Violence will be able to demonstrate both the need of unvisited cities, such as Los Angeles or Philadelphia, as well as the effect Cure Violence has had in its existing partnerships with Baltimore, Chicago, and New York.
 
 ## Instructions
-Since all the code is client-side, this can be hosted almost anywhere.  It is currently live at [enkeboll.github.io/baltimore.html](enkeboll.github.io/baltimore.html), but can be run locally by first starting a lightweight server (`python -m SimpleHTTPServer`) from the root directory and then visiting [http://localhost:5000/baltimore.html](http://localhost:5000/baltimore.html).
+Since all the code is client-side, this can be hosted almost anywhere.  It is currently live at [enkeboll.github.io/baltimore.html](enkeboll.github.io/baltimore.html), but can be run locally by first starting a lightweight server (`python -m SimpleHTTPServer`) from the root directory and then visiting [http://localhost:5000/baltimore.html](http://localhost:8000/baltimore.html).
 
 Special thanks to the original designers mentioned above, Columbia University, Cure Violence, and Booz Allen Hamilton.
