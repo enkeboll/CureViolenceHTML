@@ -1,5 +1,5 @@
 ## Overview
-To better tell the story of gun violence, the Columbia team has launched a web tool that overlays a heat map of gun-related crime for a given data set (https://github.com/enkeboll/ crime-heatmaps). The tool provides the option to filter by crime type (homicide, shooting, robbery, aggravated assault) as well as drop in mediators to view the tangible effects of Cure Violence practices in a neighborhood.
+To better tell the story of gun violence, the Columbia team has launched a web tool that overlays a heat map of gun-related crime for a given data set (https://github.com/enkeboll/crime-heatmaps). The tool provides the option to filter by crime type (homicide, shooting, robbery, aggravated assault) as well as drop in mediators to view the tangible effects of Cure Violence practices in a neighborhood.
 
 Several steps went into the creation of this tool. It is to the credit of the governments of Baltimore, Chicago, and New York that they all use online data portals freely accessible to the public, from which the team was able to pull the data. Each record needed only two of information: a timestamp and a location (lat/long). In order to filter based on crime category, that information should also be included.
 
